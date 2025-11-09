@@ -5,7 +5,7 @@ import core
 from config import DEMON_HP, PIT_LORD_GRIND_RATE
 
 def get_int_input(prompt: str) -> int:
-    """gets an integer input from the user."""
+    """Safely gets an integer from the user."""
     while True:
         try:
             value_str = input(prompt)
@@ -14,7 +14,7 @@ def get_int_input(prompt: str) -> int:
             print("Error: Please enter a valid integer.")
 
 def get_float_input(prompt: str) -> float:
-    """gets a float input from the user."""
+    """Safely gets a float from the user."""
     while True:
         try:
             value_str = input(prompt)
@@ -32,7 +32,7 @@ def display_options(options: list, title: str):
             print(f"  [{i+1}] {option}")
 
 def get_choice(options: list):
-    """Gets the user's selection from a list of options."""
+    """Gets a user's choice from a list."""
     while True:
         choice_str = input("Enter number (or '0' to cancel/back): ")
         try:
@@ -72,11 +72,8 @@ def display_results(results: dict):
     print(f"  Required Pit Lords for full conversion: {results['needed_pit_lords']}")
     print(f"  Perfect stack (0 waste): {results['perfect_grind_units']} units (for {results['perfect_grind_hp']:.0f} HP)")
 
-def display_distribution_chart(chart_data: list, user_pit_lord_input: int):
-    """
-    Draws a terminal bar chart, grouping results
-    by the required number of Pit Lords.
-    """
+def display_distribution_chart(chart_data: list, user_pit_lord_input: int, next_perfect_count: int, current_count: int):
+    """Draws the terminal bar chart."""
     print("\n--- Local Distribution Chart ---")
     
     print(" " * 12 + "  █ = *Potential* Demons from HP (scaled to list max)")
@@ -106,7 +103,7 @@ def display_distribution_chart(chart_data: list, user_pit_lord_input: int):
         if item.get('is_special'):
             print(" " * 12 + "(...)")
             current_lord_group = None 
-        
+            
         count = item['count']
         demons = item['demons']
         waste = item.get('waste')
@@ -143,6 +140,9 @@ def display_distribution_chart(chart_data: list, user_pit_lord_input: int):
             label = " <-- CURRENT & PERFECT"
         elif is_current:
             label = " <-- CURRENT"
+            if next_perfect_count > current_count:
+                diff = next_perfect_count - current_count
+                label += f" (Need +{diff} for PERFECTION)"
         elif is_perfect:
             label = " <-- PERFECT STACK"
             
@@ -158,10 +158,7 @@ def display_distribution_chart(chart_data: list, user_pit_lord_input: int):
         print(f"{prefix} | {count: >3} Units: [{bar_str}] {demons_str} Demons | Waste: {waste_str} HP{label}")
 
 def _calculate_chart_data(unit_hp, unit_count, pit_lord_count):
-    """
-    Helper function to build the full chart data list.
-    Creates 9 bars (-4 to +4) AND adds special '(...)' bars.
-    """
+    """Builds the data list for the distribution chart."""
     chart_data_list = []
     results_current = None
     
@@ -170,6 +167,14 @@ def _calculate_chart_data(unit_hp, unit_count, pit_lord_count):
         
     results_current = core.calculate_demon_farm(unit_hp, unit_count, pit_lord_count)
     min_perfect_stack = results_current['perfect_grind_units']
+    current_waste = results_current['wasted_hp']
+    
+    next_perfect_count = -1
+    if min_perfect_stack > 0:
+        if current_waste == 0:
+            next_perfect_count = unit_count + min_perfect_stack
+        else:
+            next_perfect_count = ((unit_count // min_perfect_stack) + 1) * min_perfect_stack
 
     for offset in range(-4, 5): 
         current_count = unit_count + offset
@@ -210,25 +215,22 @@ def _calculate_chart_data(unit_hp, unit_count, pit_lord_count):
                 })
 
         last_item = chart_data_list[-1]
-        if last_item['waste'] > 0:
-            perfect_above_count = ((last_item['count'] // min_perfect_stack) + 1) * min_perfect_stack
-            
-            if perfect_above_count > last_item['count']:
-                results = core.calculate_demon_farm(unit_hp, perfect_above_count, pit_lord_count)
-                chart_data_list.append({
-                    'count': perfect_above_count, 
-                    'demons': results['max_demons_from_hp'],
-                    'waste': results['wasted_hp'], 
-                    'lords': results['needed_pit_lords'], 
-                    'is_current': False,
-                    'is_special': True
-                })
+        if next_perfect_count > last_item['count']:
+            results = core.calculate_demon_farm(unit_hp, next_perfect_count, pit_lord_count)
+            chart_data_list.append({
+                'count': next_perfect_count, 
+                'demons': results['max_demons_from_hp'],
+                'waste': results['wasted_hp'], 
+                'lords': results['needed_pit_lords'], 
+                'is_current': False,
+                'is_special': True
+            })
 
-    return results_current, chart_data_list
+    return results_current, chart_data_list, next_perfect_count
 
 
 def run_simple_calculator():
-    """Logic for option [1] Simple Calculator with nested loops and tree display."""
+    """Runs the logic for the Simple Calculator."""
     print("\n--- Simple Calculator ---")
     print("Select unit HP source:")
     print("  [1] Select from database")
@@ -284,10 +286,10 @@ def run_simple_calculator():
                 unit_count = get_int_input(f"Enter number of units (HP: {unit_hp}): ")
                 pit_lord_count = get_int_input("Enter number of Pit Lords: ")
 
-                results_current, chart_data_list = _calculate_chart_data(unit_hp, unit_count, pit_lord_count)
+                results_current, chart_data_list, next_p_count = _calculate_chart_data(unit_hp, unit_count, pit_lord_count)
 
                 display_results(results_current)
-                display_distribution_chart(chart_data_list, pit_lord_count)
+                display_distribution_chart(chart_data_list, pit_lord_count, next_p_count, unit_count)
                 
                 input("\n... press Enter to calculate for another unit in this faction ...")
 
@@ -297,10 +299,10 @@ def run_simple_calculator():
         unit_count = get_int_input(f"Enter number of units (HP: {unit_hp}): ")
         pit_lord_count = get_int_input("Enter number of Pit Lords: ")
 
-        results_current, chart_data_list = _calculate_chart_data(unit_hp, unit_count, pit_lord_count)
+        results_current, chart_data_list, next_p_count = _calculate_chart_data(unit_hp, unit_count, pit_lord_count)
 
         display_results(results_current)
-        display_distribution_chart(chart_data_list, pit_lord_count)
+        display_distribution_chart(chart_data_list, pit_lord_count, next_p_count, unit_count)
         
         input("\n... press Enter to return to the main menu ...")
     
