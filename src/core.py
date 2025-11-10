@@ -1,6 +1,6 @@
 # core.py
 import math
-from config import DEMON_HP, PIT_LORD_GRIND_RATE
+from src.config import DEMON_HP, PIT_LORD_GRIND_RATE
 
 def calculate_demon_farm(unit_hp: float, unit_count: int, pit_lord_count: int) -> dict:
     """

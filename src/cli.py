@@ -1,8 +1,8 @@
 # cli.py
 import sys
-import db as db
-import core
-from config import DEMON_HP, PIT_LORD_GRIND_RATE
+import src.db as db
+import src.core
+from src.config import DEMON_HP, PIT_LORD_GRIND_RATE
 
 def get_int_input(prompt: str) -> int:
     """Safely gets an integer from the user."""

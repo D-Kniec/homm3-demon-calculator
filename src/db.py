@@ -2,7 +2,7 @@
 
 from sqlalchemy import create_engine, text
 import datetime
-from config import DB_CONNECTION_STRING 
+from src.config import DB_CONNECTION_STRING 
 
 engine = create_engine(DB_CONNECTION_STRING)
 
@@ -313,7 +313,8 @@ def get_factions() -> list:
             result = con.execute(query)
             factions = [row[0] for row in result.fetchall()]
             return factions
-    except:
+    except Exception as e:
+        print(f"!!! KRYTYCZNY BŁĄD w get_factions: {e}") 
         return 0
 
 def get_units_by_faction(faction: str, is_upgraded: bool) -> list:
