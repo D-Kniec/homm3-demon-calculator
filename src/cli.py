@@ -1,88 +1,149 @@
-# cli.py
 import sys
 import src.db as db
 import src.core
-from src.config import DEMON_HP, PIT_LORD_GRIND_RATE
+from src.config import DEMON_HP, PIT_LORD_GRIND_RATE,FACTION_COLORS
+
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
+import questionary
+
+console = Console()
+
+
 
 def get_int_input(prompt: str) -> int:
-    """Safely gets an integer from the user."""
+    """Safely gets an integer from the user using questionary."""
     while True:
+        answer = questionary.text(prompt).ask()
         try:
-            value_str = input(prompt)
-            return int(value_str)
-        except ValueError:
-            print("Error: Please enter a valid integer.")
+            return int(answer)
+        except (ValueError, TypeError):
+            console.print("[bold red]Error: Please enter a valid integer.[/bold red]")
 
 def get_float_input(prompt: str) -> float:
-    """Safely gets a float from the user."""
+    """Safely gets a float from the user using questionary."""
     while True:
+        answer = questionary.text(prompt).ask()
         try:
-            value_str = input(prompt)
-            return float(value_str)
-        except ValueError:
-            print("Error: Please enter a valid number.")
+            return float(answer)
+        except (ValueError, TypeError):
+            console.print("[bold red]Error: Please enter a valid number.[/bold red]")
 
-def display_options(options: list, title: str):
-    """Displays a numbered list of options."""
-    print(f"\n--- {title} ---")
-    for i, option in enumerate(options):
-        if isinstance(option, tuple):
-            print(f"  [{i+1}] {option[0]} (HP: {option[1]})")
+def get_choice_from_map(options_map: dict):
+    """Gets a user's choice from a dictionary map using questionary."""
+    while True:
+        choice_str = questionary.text("Enter number (or '0' to cancel/back):").ask()
+        
+        if choice_str is None:
+            return None
+        if choice_str == '0':
+            return None 
+        
+        if choice_str in options_map:
+            return options_map[choice_str]
         else:
-            print(f"  [{i+1}] {option}")
-
-def get_choice(options: list):
-    """Gets a user's choice from a list."""
-    while True:
-        choice_str = input("Enter number (or '0' to cancel/back): ")
-        try:
-            choice_int = int(choice_str)
-            if choice_int == 0:
-                return None 
-            if 0 < choice_int <= len(options):
-                return options[choice_int - 1] 
-            else:
-                print(f"Error: Please select a number between 1 and {len(options)}.")
-        except ValueError:
-            print("Error: Please enter a number.")
+            valid_keys = ", ".join(options_map.keys())
+            console.print(f"[bold red]Error: Please select a valid number. Choices are: {valid_keys}[/bold red]")
 
 def display_main_menu():
-    """Displays the main menu."""
-    print("\n╔════════════════════════════════════════════╗")
-    print("║        DEMON FARMING CALCULATOR (HotA)       ║")
-    print("╠════════════════════════════════════════════╣")
-    print("║ [1] Simple Calculator ('Sandbox' Mode)       ║")
-    print("║ [2] Game Mode (Load/Create) (TODO)           ║")
-    print("║ [0] Exit                                     ║")
-    print("╚════════════════════════════════════════════╝")
+    """Displays the main menu using rich.Panel."""
+    menu_text = (
+        "\n"
+        "[bold cyan][1][/bold cyan] Simple Calculator ('Sandbox' Mode)\n"
+        "[bold cyan][2][/bold cyan] Game Mode (Load/Create) (TODO)\n"
+        "\n"
+        "[bold yellow][0][/bold yellow] Exit"
+    )
+    
+    console.print(
+        Panel(
+            menu_text, 
+            title="DEMON FARMING CALCULATOR (HotA)", 
+            border_style="#d62455",
+            title_align="center",
+            padding=(1, 2)
+        )
+    )
 
 def display_results(results: dict):
-    """Displays a formatted calculation report."""
-    print("\n--- CALCULATION RESULTS ---")
-    print(f"  Unit: {results['unit_count']} x (HP: {results['unit_hp']})")
-    print(f"  Total HP Pool: {results['total_hp_pool']:.0f}")
-    print(f"  Pit Lords Used: {results['pit_lord_count']}")
-    print("-" * 20)
-    print(f"  Max demons from HP pool: {results['max_demons_from_hp']:.2f}")
-    print(f"  Max demons from Pit Lords: {results['max_demons_from_lords']:.2f}")
-    print(f"  ACTUALLY GAINED: {results['actual_demons_gained']:.2f} demons")
-    print("-" * 20)
-    print("--- Optimization ---")
-    print(f"  Wasted HP (remainder): {results['wasted_hp']:.2f}") 
-    print(f"  Required Pit Lords for full conversion: {results['needed_pit_lords']}")
-    print(f"  Perfect stack (0 waste): {results['perfect_grind_units']} units (for {results['perfect_grind_hp']:.0f} HP)")
+    """Displays a formatted calculation report using rich."""
+    console.print(Panel(
+        f"  [bold]INPUT DATA[/bold]\n"
+        f"    ├─ Units:           {results['unit_count']} x (HP: {results['unit_hp']})\n"
+        f"    ├─ Total HP Pool:   {results['total_hp_pool']:.0f}\n"
+        f"    └─ Pit Lords Used:  {results['pit_lord_count']}\n"
+        f"\n"
+        f"  [bold]YIELD[/bold]\n"
+        f"    ├─ Max (from HP):   [yellow]{results['max_demons_from_hp']:.2f}[/yellow]\n"
+        f"    ├─ Max (from Lords): [yellow]{results['max_demons_from_lords']:.2f}[/yellow]\n"
+        f"    └─ >> [bold green] ACTUALLY GAINED: {results['actual_demons_gained']:.2f} demons[/bold green]\n"
+        f"\n"
+        f"  [bold]OPTIMIZATION[/bold]\n"
+        f"    ├─ Wasted HP:       [red]{results['wasted_hp']:.2f}[/red] (remainder)\n"
+        f"    ├─ Needed Lords:    {results['needed_pit_lords']} (for this stack)\n"
+        f"    └─ Perfect Stack:   {results['perfect_grind_units']} units (for {results['perfect_grind_hp']:.0f} HP)",
+        title="Calculation Results",
+        border_style="magenta",
+        padding=1
+    ))
+
+
+def display_unit_selection_table(faction: str, non_upgraded: list, upgraded: list) -> dict:
+    """Displays units in a rich.Table and returns the choice map."""
+    
+    faction_color = FACTION_COLORS.get(faction, "default")
+    
+    table = Table(title=f"Select Unit ({faction})", border_style="blue", padding=(0, 1))
+    table.add_column("Key", style="cyan", width=5)
+    table.add_column("Non-Upgraded")
+    table.add_column("HP", style="yellow", width=6)
+    table.add_column("Key", style="cyan", width=5)
+    table.add_column("Upgraded")
+    table.add_column("HP", style="yellow", width=6)
+    
+    choice_map = {}
+    
+    len_n = len(non_upgraded)
+    len_u = len(upgraded)
+    max_len = max(len_n, len_u)
+
+    for i in range(max_len):
+        key_n, unit_n_str, hp_n = "", "", ""
+        if i < len_n:
+            key_n = str(i + 1)
+            unit_n_str = non_upgraded[i][0]
+            hp_n = str(non_upgraded[i][1])
+            choice_map[key_n] = non_upgraded[i]
+
+        key_u, unit_u_str, hp_u = "", "", ""
+        if i < len_u:
+            key_u = str(i + 1) * 2
+            unit_u_str = upgraded[i][0]
+            hp_u = str(upgraded[i][1])
+            choice_map[key_u] = upgraded[i]
+        
+        if i > 0:
+            table.add_row("---", "---", "---", "---", "---", "---", style="dim")
+
+        unit_n_styled = Text(unit_n_str, style=faction_color) if unit_n_str else ""
+        unit_u_styled = Text(unit_u_str, style=faction_color) if unit_u_str else ""
+
+        table.add_row(f"[{key_n}]", unit_n_styled, hp_n, f"[{key_u}]", unit_u_styled, hp_u)
+        
+    console.print(table)
+    return choice_map
+
 
 def display_distribution_chart(chart_data: list, user_pit_lord_input: int, next_perfect_count: int, current_count: int):
-    """Draws the terminal bar chart."""
-    print("\n--- Local Distribution Chart ---")
+    """Draws the terminal bar chart using rich.Table."""
     
-    print(" " * 12 + "  █ = *Potential* Demons from HP (scaled to list max)")
-    print(" " * 12 + "  Lords = *Theoretical* Pit Lords needed for this stack")
-    print(f"           [✓]/[ ] = Is your {user_pit_lord_input} Pit Lords enough for THIS GROUP?")
-    
+    lords_color_hex = "#FC591E"
+
     demons_values = [d['demons'] for d in chart_data if d.get('demons') is not None]
     if not demons_values:
-        print("  (No data to display)")
+        console.print("  (No data to display)")
         return
         
     max_demons = max(demons_values)
@@ -97,17 +158,26 @@ def display_distribution_chart(chart_data: list, user_pit_lord_input: int, next_
         if demons is None:
             return " " * BAR_WIDTH
         bar_len = int((demons / max_demons) * BAR_WIDTH)
-        return '█' * bar_len + ' ' * (BAR_WIDTH - bar_len)
+        return Text('█' * bar_len, style="blue") + Text(' ' * (BAR_WIDTH - bar_len))
+
+    table = Table.grid(padding=(0, 1))
+    table.add_column(width=4)
+    table.add_column(width=9)
+    table.add_column(width=10)
+    table.add_column(width=BAR_WIDTH + 2)
+    table.add_column(width=15)
+    table.add_column(width=15)
+    table.add_column()
 
     for item in chart_data:
         if item.get('is_special'):
-            print(" " * 12 + "(...)")
+            table.add_row(Text("(...)".center(23 + BAR_WIDTH), style="dim"))
             current_lord_group = None 
             
         count = item['count']
         demons = item['demons']
         waste = item.get('waste')
-        lords = item.get('lords')
+        lords = item['lords']
         is_current = item['is_current']
         
         is_perfect = (waste is not None and waste == 0.0 and count > 0)
@@ -115,47 +185,73 @@ def display_distribution_chart(chart_data: list, user_pit_lord_input: int, next_
         if count == 0 and not is_current:
             continue
             
-        prefix = ""
+        check_mark = Text(" ")
+        if lords is None:
+            check_mark = Text("?", style="yellow")
+        elif user_pit_lord_input >= lords:
+            check_mark = Text("✓", style="green")
+
+        lords_str = Text(" ")
         if lords != current_lord_group:
             if current_lord_group is not None:
-                print(" " * 12 + "-" * (BAR_WIDTH + 30)) 
-            
-            check_mark = " "
+                table.add_row(
+                    Text("---", style="dim"), 
+                    Text("---------", style="dim"), 
+                    Text("---------", style="dim"), 
+                    Text("-" * (BAR_WIDTH + 2), style="dim"), 
+                    Text("---------------", style="dim"), 
+                    Text("-------------------", style="dim"), 
+                    style="dim"
+                )
+
             if lords is None:
-                check_mark = "?"
+                lords_str = Text("?? lords", style="yellow")
             elif user_pit_lord_input >= lords:
-                check_mark = "✓"
-            
-            if lords is None:
-                prefix = f" [{check_mark}]  ?? lords"
-                current_lord_group = None
+                 lords_str = Text(f"{lords: >2} lord{'s' if lords != 1 else ' '}", style=f"bold {lords_color_hex}")
             else:
-                prefix = f" [{check_mark}] {lords: >2} lord{'s' if lords != 1 else ' '}"
-                current_lord_group = lords
-        else:
-            prefix = " " * 13
+                 lords_str = Text(f"{lords: >2} lord{'s' if lords != 1 else ' '}", style=f"{lords_color_hex}")
             
-        label = ""
+            current_lord_group = lords
+        
+        label = Text("")
         if is_current and is_perfect:
-            label = " <-- CURRENT & PERFECT"
+            label = Text("  <-- (CURRENT & PERFECT)", style="bold green")
         elif is_current:
-            label = " <-- CURRENT"
+            label = Text("  <-- (CURRENT)", style="bold yellow")
             if next_perfect_count > current_count:
                 diff = next_perfect_count - current_count
-                label += f" (Need +{diff} for PERFECTION)"
+                label.append(f" (Need +{diff} for PERFECTION)", style="yellow")
         elif is_perfect:
-            label = " <-- PERFECT STACK"
+            label = Text("  <-- (PERFECT STACK)", style="bold green")
             
         if count < 0 or demons is None:
-            bar_str = " (invalid) ".center(BAR_WIDTH)
-            demons_str = "---".center(6)
-            waste_str = "---".center(6)
+            bar_str = Text(" (invalid) ".center(BAR_WIDTH), style="red")
+            demons_str = Text("---".center(6), style="dim")
+            waste_str = Text("---".center(6), style="dim")
         else:
             bar_str = get_bar(demons)
-            demons_str = f"{demons: >6.2f}"
-            waste_str = f"{waste: >6.2f}"
+            demons_str = Text(f"{demons: >6.2f} Demons")
+            waste_str = Text(f"{waste: >6.2f} HP", style="red" if waste > 0 else "dim")
             
-        print(f"{prefix} | {count: >3} Units: [{bar_str}] {demons_str} Demons | Waste: {waste_str} HP{label}")
+        table.add_row(
+            f"[{check_mark}]", 
+            lords_str, 
+            f"{count: >3} Units:",
+            f"[{bar_str}]",
+            demons_str,
+            f"| Waste: {waste_str}",
+            label
+        )
+    
+    console.print(Panel(table, title="Local Distribution Chart", border_style="cyan"))
+
+    legend = (
+        f"    [green][✓][/green]/[dim][ ][/dim] = Your {user_pit_lord_input} Pit Lords are enough for this stack\n"
+        f"    [blue]█[/blue]       = *Potential* Demons from HP (scaled to list max)\n"
+        f"    [bold {lords_color_hex}]Lords[/bold {lords_color_hex}]   = *Theoretical* Pit Lords needed for this stack"
+    )
+    console.print(Panel(legend, title="Legend", border_style="grey50", padding=(0, 2)))
+
 
 def _calculate_chart_data(unit_hp, unit_count, pit_lord_count):
     """Builds the data list for the distribution chart."""
@@ -165,7 +261,7 @@ def _calculate_chart_data(unit_hp, unit_count, pit_lord_count):
     if unit_count < 0:
         unit_count = 0
         
-    results_current = core.calculate_demon_farm(unit_hp, unit_count, pit_lord_count)
+    results_current = src.core.calculate_demon_farm(unit_hp, unit_count, pit_lord_count)
     min_perfect_stack = results_current['perfect_grind_units']
     current_waste = results_current['wasted_hp']
     
@@ -186,7 +282,7 @@ def _calculate_chart_data(unit_hp, unit_count, pit_lord_count):
         if is_current:
             results = results_current
         else:
-            results = core.calculate_demon_farm(unit_hp, current_count, pit_lord_count)
+            results = src.core.calculate_demon_farm(unit_hp, current_count, pit_lord_count)
         
         demons_for_bar = results['max_demons_from_hp'] 
         wasted = results['wasted_hp']
@@ -204,7 +300,7 @@ def _calculate_chart_data(unit_hp, unit_count, pit_lord_count):
             perfect_below_count = ((first_item['count'] - 1) // min_perfect_stack) * min_perfect_stack
             
             if perfect_below_count >= 0 and perfect_below_count < first_item['count']:
-                results = core.calculate_demon_farm(unit_hp, perfect_below_count, pit_lord_count)
+                results = src.core.calculate_demon_farm(unit_hp, perfect_below_count, pit_lord_count)
                 chart_data_list.insert(0, {
                     'count': perfect_below_count, 
                     'demons': results['max_demons_from_hp'],
@@ -216,7 +312,7 @@ def _calculate_chart_data(unit_hp, unit_count, pit_lord_count):
 
         last_item = chart_data_list[-1]
         if next_perfect_count > last_item['count']:
-            results = core.calculate_demon_farm(unit_hp, next_perfect_count, pit_lord_count)
+            results = src.core.calculate_demon_farm(unit_hp, next_perfect_count, pit_lord_count)
             chart_data_list.append({
                 'count': next_perfect_count, 
                 'demons': results['max_demons_from_hp'],
@@ -228,55 +324,47 @@ def _calculate_chart_data(unit_hp, unit_count, pit_lord_count):
 
     return results_current, chart_data_list, next_perfect_count
 
-
 def run_simple_calculator():
     """Runs the logic for the Simple Calculator."""
-    print("\n--- Simple Calculator ---")
-    print("Select unit HP source:")
-    print("  [1] Select from database")
-    print("  [2] Enter HP manually")
-    print("  [0] Back to Main Menu")
-    choice = input("Choice: ").strip()
+    
+    choice = questionary.select(
+        "Select unit HP source:",
+        choices=[
+            questionary.Choice("Select from database", '1'),
+            questionary.Choice("Enter HP manually", '2'),
+            questionary.Separator(),
+            questionary.Choice("Back to Main Menu", '0')
+        ]
+    ).ask()
 
     unit_hp = 0.0
 
     if choice == '1':
         while True:
             factions = db.get_factions()
-            display_options(factions, "Select Faction")
-            faction = get_choice(factions)
+            factions.append(questionary.Separator())
+            factions.append(questionary.Choice("Back", "0"))
             
-            if faction is None: 
+            faction = questionary.select(
+                "Select Faction:",
+                choices=factions
+            ).ask()
+            
+            if faction is None or faction == '0': 
                 return 
 
             non_upgraded = db.get_units_by_faction(faction, False)
             upgraded = db.get_units_by_faction(faction, True)
             
             if not non_upgraded and not upgraded:
-                print(f"No units found for '{faction}'.")
+                console.print(f"[bold red]No units found for '{faction}'.[/bold red]")
                 input("... press Enter to select another faction ...")
                 continue 
 
-            all_units = non_upgraded + upgraded
-
             while True:
-                print(f"\n--- Select Unit ({faction}) ---")
-                offset = 0
+                choice_map = display_unit_selection_table(faction, non_upgraded, upgraded)
                 
-                if non_upgraded:
-                    print("  -Non-Upgraded")
-                    for i, unit in enumerate(non_upgraded):
-                        print(f"    ├─ [{i+1}] {unit[0]} (HP: {unit[1]})")
-                    offset = len(non_upgraded)
-                
-                if upgraded:
-                    print("  -Upgraded")
-                    for i, unit in enumerate(upgraded):
-                        print(f"    ├─ [{i+1+offset}] {unit[0]} (HP: {unit[1]})")
-                
-                print("-" * 20)
-                
-                unit_data = get_choice(all_units) 
+                unit_data = get_choice_from_map(choice_map) 
                 
                 if unit_data is None: 
                     break 
@@ -284,50 +372,67 @@ def run_simple_calculator():
                 unit_hp = unit_data[1] 
                 
                 unit_count = get_int_input(f"Enter number of units (HP: {unit_hp}): ")
-                pit_lord_count = get_int_input("Enter number of Pit Lords: ")
+
+                prelim_results = src.core.calculate_demon_farm(unit_hp, unit_count, 0)
+                needed_lords = prelim_results['needed_pit_lords']
+                
+                pit_lord_count = get_int_input(f"Enter number of Pit Lords (needed: {needed_lords}): ")
 
                 results_current, chart_data_list, next_p_count = _calculate_chart_data(unit_hp, unit_count, pit_lord_count)
 
                 display_results(results_current)
                 display_distribution_chart(chart_data_list, pit_lord_count, next_p_count, unit_count)
                 
-                input("\n... press Enter to calculate for another unit in this faction ...")
+                console.print("\n... press Enter to calculate for another unit in this faction ...", style="dim")
+                input()
 
     elif choice == '2':
         unit_hp = get_float_input("Enter single unit HP: ")
         
         unit_count = get_int_input(f"Enter number of units (HP: {unit_hp}): ")
-        pit_lord_count = get_int_input("Enter number of Pit Lords: ")
+        
+        prelim_results = src.core.calculate_demon_farm(unit_hp, unit_count, 0)
+        needed_lords = prelim_results['needed_pit_lords']
+        
+        pit_lord_count = get_int_input(f"Enter number of Pit Lords (needed: {needed_lords}): ")
 
         results_current, chart_data_list, next_p_count = _calculate_chart_data(unit_hp, unit_count, pit_lord_count)
 
         display_results(results_current)
         display_distribution_chart(chart_data_list, pit_lord_count, next_p_count, unit_count)
         
-        input("\n... press Enter to return to the main menu ...")
+        console.print("\n... press Enter to return to the main menu ...", style="dim")
+        input()
     
-    elif choice == '0':
+    elif choice == '0' or choice is None:
         return
     
-    else:
-        print("Invalid choice.")
-        input("\n... press Enter to return to the main menu ...")
-
 
 def start_app():
     """Main application loop."""
     
     while True:
         display_main_menu()
-        choice = input("Select option: ").strip()
+        
+        choice = questionary.select(
+            "Select option:",
+            choices=[
+                questionary.Choice("Simple Calculator", '1'),
+                questionary.Choice("Game Mode (TODO)", '2'),
+                questionary.Separator(),
+                questionary.Choice("Exit", '0')
+            ],
+            use_shortcuts=True
+        ).ask()
 
         if choice == '1':
             run_simple_calculator()
         elif choice == '2':
-            print("\nGame Mode is not yet implemented. (TODO)")
-            input("\n... press Enter to return to menu ...")
-        elif choice == '0':
-            print("Goodbye!")
+            console.print("\n[yellow]Game Mode is not yet implemented. (TODO)[/yellow]")
+            console.print("\n... press Enter to return to menu ...", style="dim")
+            input()
+        elif choice == '0' or choice is None:
+            console.print("[bold cyan]Goodbye![/bold cyan]")
             sys.exit(0)
         else:
-            print("Invalid choice, please try again.")
+            console.print("[bold red]Invalid choice, please try again.[/bold red]")

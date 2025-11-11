@@ -3,6 +3,7 @@
 from sqlalchemy import create_engine, text
 import datetime
 from src.config import DB_CONNECTION_STRING 
+from tqdm import tqdm
 
 engine = create_engine(DB_CONNECTION_STRING)
 
@@ -81,7 +82,7 @@ def import_units():
     """
     Imports units
     """
-unit_list = [
+    unit_list = [
             # Zamek
             ('Zamek', 'Pikinier', 10, 0),
             ('Zamek', 'Halabardnik', 10, 1),
@@ -339,15 +340,13 @@ def import_artifacts():
 
 def get_factions() -> list:
     """Fetches a unique, sorted list of factions."""
-    try:
-        with engine.connect() as con:
-            query = text("SELECT DISTINCT faction FROM units ORDER BY faction")
-            result = con.execute(query)
-            factions = [row[0] for row in result.fetchall()]
-            return factions
-    except Exception as e:
-        print(f"!!! KRYTYCZNY BŁĄD w get_factions: {e}") 
-        return 0
+ 
+    with engine.connect() as con:
+        query = text("SELECT DISTINCT faction FROM units ORDER BY faction")
+        result = con.execute(query)
+        factions = [row[0] for row in result.fetchall()]
+        return factions
+
 
 def get_units_by_faction(faction: str, is_upgraded: bool) -> list:
     """Fetches units for a specific faction and upgrade status."""
@@ -379,20 +378,27 @@ def get_unit_hp(unit_name: str) -> float:
 
 def initialize_database():
     """
-    Runs the full, first-time setup: creates all tables and populates them.
+    Runs the full setup: creates all tables (if they don't exist) 
+    and populates them with data (if missing).
+    Shows a progress bar during this process.
     """
-    print("  Creating tables...")
-    create_table_units()
-    print("  ├─ [✓] 'units' table is ready.")
-    import_units()
-    create_table_artifacts()
-    print("  ├─ [✓] 'artifacts' table is ready.")
-    import_artifacts()
-    create_table_games()
-    print("  ├─ [✓] 'games' table is ready.")
-    create_table_game_artifacts()
-    print("  ├─ [✓] 'game_artifacts' (link table) is ready.")
-    create_table_logs()
-    print("  └─ [✓] 'calculation_logs' table is ready.")
+    
+    tasks = [
+        (create_table_units, "Creating 'units' table"),
+        (import_units, "Importing units"),
+        (create_table_artifacts, "Creating 'artifacts' table"),
+        (import_artifacts, "Importing artifacts"),
+        (create_table_games, "Creating 'games' table"),
+        (create_table_game_artifacts, "Creating 'game_artifacts' table"),
+        (create_table_logs, "Creating 'calculation_logs' table")
+    ]
 
+    print("  Checking and initializing database...")
+    
+    with tqdm(total=len(tasks), desc="Initialization progress", unit="step") as pbar:
+        for func, description in tasks:
+            pbar.set_description(f"Progress: {description}")
+            func()
+            pbar.update(1)
 
+    print("  └─ [✓] Database is ready.")
