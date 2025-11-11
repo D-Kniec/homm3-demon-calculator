@@ -81,7 +81,7 @@ def import_units():
     """
     Imports units
     """
-    unit_list = [
+unit_list = [
             # Zamek
             ('Zamek', 'Pikinier', 10, 0),
             ('Zamek', 'Halabardnik', 10, 1),
@@ -226,9 +226,41 @@ def import_units():
             ('Wrota Żywiołów', 'Ognisty Ptak', 150, 0),
             ('Wrota Żywiołów', 'Feniks', 200, 1),
 
+            # Przystań (Cove)
+            ('Przystań', 'Nimfa', 15, 0),
+            ('Przystań', 'Okeanida', 16, 1),
+            ('Przystań', 'Mat', 20, 0),
+            ('Przystań', 'Bosman', 20, 1),
+            ('Przystań', 'Pirat', 40, 0),
+            ('Przystań', 'Korsarz', 40, 1),
+            ('Przystań', 'Ptak Morski', 45, 0),
+            ('Przystań', 'Ayssyda', 45, 1),
+            ('Przystań', 'Wiedźma Morska', 50, 0),
+            ('Przystań', 'Czarodziejka', 50, 1),
+            ('Przystań', 'Nix', 100, 0),
+            ('Przystań', 'Nix Wojownik', 110, 1),
+            ('Przystań', 'Wąż Morski', 280, 0),
+            ('Przystań', 'Haspid', 280, 1),
+
+            # Fabryka (Factory)
+            ('Fabryka', 'Niziołek (fabryka)', 12, 0),
+            ('Fabryka', 'Niziołek Grenadier', 12, 1),
+            ('Fabryka', 'Mechanik', 30, 0),
+            ('Fabryka', 'Inżynier', 30, 1),
+            ('Fabryka', 'Pancernik', 45, 0),
+            ('Fabryka', 'Pancernik Hetman', 45, 1),
+            ('Fabryka', 'Automat', 120, 0),
+            ('Fabryka', 'Strażnik Automat', 120, 1),
+            ('Fabryka', 'Czerw Pustyni', 100, 0),
+            ('Fabryka', 'Olgoj-chorchoj', 100, 1),
+            ('Fabryka', 'Rewolwerowiec', 110, 0),
+            ('Fabryka', 'Łowca Nagród', 110, 1),
+            ('Fabryka', 'Kuroliszek', 250, 0),
+            ('Fabryka', 'Karmazynowy Kuroliszek', 250, 1),
+
             # Neutralne
             ('Neutralne', 'Chłop', 1, 0),
-            ('Neutralne', 'Niziołek', 4, 0),
+            ('Neutralne', 'Niziołek', 4, 0), 
             ('Neutralne', 'Duch', 8, 0),
             ('Neutralne', 'Zbir', 10, 0),
             ('Neutralne', 'Bandyta', 10, 0),
@@ -240,8 +272,8 @@ def import_units():
             ('Neutralne', 'Rdzawy Smok', 750, 0),
             ('Neutralne', 'Kryształowy Smok', 800, 0),
             ('Neutralne', 'Czarodziejski Smok', 1000, 0),
-            ('Neutralne', 'Lazurowy Smok', 1000, 0)]
-
+            ('Neutralne', 'Lazurowy Smok', 1000, 0)
+]
     query = text("""
         INSERT INTO units (faction, unit_name, hp, is_upgraded) 
         VALUES (:faction, :unit_name, :hp, :is_upgraded)
