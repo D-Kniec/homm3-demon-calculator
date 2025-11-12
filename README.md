@@ -85,91 +85,80 @@ Loaded game: 'WePlayForFun'
 │      └─ Loss vs Buying:    -100 gold / demon                                     │
 │                                                                                  │
 ╰──────────────────────────────────────────────────────────────────────────────────╯
+```
+## 🚀 Get It Running (How to Install)
 
-🚀 Get It Running (How to Install)
+This is a standalone application! You **do not** need to install Python or any libraries.
 
-This is a standalone application! You do not need to install Python or any libraries.
+### For Linux Users:
 
-For Linux Users (You are here):
-
-    Go to the Releases tab on this GitHub page.
-
-    Download the latest .zip file (e.g., demon-calc-linux.zip).
-
-    Unzip the file. You will get a single executable file named demon-calc.
-
-    Open your terminal and go to the folder where you unzipped the file.
-
-    Important: You must make the file executable first:
-    Bash
-
-chmod +x demon-calc
-
-Run the application:
-Bash
-
+1.  Go to the **[Releases](https://github.com/D-Kniec/homm3-demon-calculator/releases)** tab on this GitHub page.
+2.  Download the latest `.zip` file (e.g., `demon-calc-linux.zip`).
+3.  Unzip the file. You will get a single executable file named `demon-calc`.
+4.  Open your terminal and go to the folder where you unzipped the file.
+5.  **Important:** You must make the file executable first:
+    ```bash
+    chmod +x demon-calc
+    ```
+6.  Run the application:
+    ```bash
     ./demon-calc
+    ```
 
-For Windows Users:
+### For Windows Users:
 
-    Go to the Releases tab on this GitHub page.
+1.  Go to the **[Releases](https://github.com/D-Kniec/homm3-demon-calculator/releases)** tab on this GitHub page.
+2.  Download the latest `.zip` file (e.g., `demon-calc-windows.zip`).
+3.  Unzip the file.
+4.  Double-click the `demon-calc.exe` file to run the application. (Windows may show a security warning because the file is not "signed". You may need to click "More info" -> "Run anyway").
 
-    Download the latest .zip file (e.g., demon-calc-windows.zip).
+---
 
-    Unzip the file.
-
-    Double-click the demon-calc.exe file to run the application. (Windows may show a security warning because the file is not "signed". You may need to click "More info" -> "Run anyway").
-
-<details> <summary><b>(Advanced) For Developers: How to Run from Source</b></summary>
+<details>
+<summary><b>(Advanced) For Developers: How to Run from Source</b></summary>
 
 If you want to run the app directly from the Python source code instead of using the executable.
 
-    Prerequisites: You need Python 3.10+ installed.
+1.  **Prerequisites:** You need [Python 3.10+](https://www.python.org/downloads/) installed.
 
-    Get the Code:
-    Bash
+2.  **Get the Code:**
+    ```bash
+    git clone [https://github.com/D-Kniec/homm3-demon-calculator.git](https://github.com/D-Kniec/homm3-demon-calculator.git)
+    cd homm3-demon-calculator
+    ```
 
-git clone [https://github.com/D-Kniec/homm3-demon-calculator.git](https://github.com/D-Kniec/homm3-demon-calculator.git)
-cd YOUR-REPO-NAME
+3.  **Create Virtual Environment:**
+    ```bash
+    # On macOS/Linux
+    python3 -m venv .venv
+    source .venv/bin/activate
+    
+    # On Windows
+    python -m venv .venv
+    .\.venv\Scripts\activate
+    ```
 
-Create Virtual Environment:
-Bash
+4.  **Install Dependencies:**
+    ```bash
+    pip install sqlalchemy rich questionary tqdm
+    ```
 
-# On macOS/Linux
-python3 -m venv .venv
-source .venv/bin/activate
-
-# On Windows
-python -m venv .venv
-.\.venv\Scripts\activate
-
-Install Dependencies:
-Bash
-
-pip install sqlalchemy rich questionary tqdm
-
-Run the App:
-Bash
-
+5.  **Run the App:**
+    ```bash
     python main.py
-
-    (The first run will auto-generate the src/demonic_calc.db file)
+    ```
+    *(The first run will auto-generate the `src/demonic_calc.db` file)*
 
 </details>
 
-🛠️ Tech Stack (aka The Nerd Stuff)
+## 🛠️ Tech Stack (aka The Nerd Stuff)
 
-    Python 3.10+
-
-    Rich: For beautiful CLI panels, tables, and colors.
-
-    Questionary: For interactive menus and prompts.
-
-    SQLAlchemy: For communicating with the database.
-
-    tqdm: For the one-time database initialization progress bar.
-
-    SQLite: Because a full-blown PostgreSQL database would be slight overkill.
+* **Python 3.10+**
+* **Rich:** For beautiful CLI panels, tables, and colors.
+* **Questionary:** For interactive menus and prompts.
+* **SQLAlchemy:** For communicating with the database.
+* **tqdm:** For the one-time database initialization progress bar.
+* **SQLite:** Because a full-blown PostgreSQL database would be *slight* overkill.
 
 📂 Project Structure
 
