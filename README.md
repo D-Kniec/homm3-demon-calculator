@@ -160,19 +160,6 @@ If you want to run the app directly from the Python source code instead of using
 * **tqdm:** For the one-time database initialization progress bar.
 * **SQLite:** Because a full-blown PostgreSQL database would be *slight* overkill.
 '''
-##📂 Project Structure
+## 📂 Project Structure
 
-demon-calc/
-├── .venv/
-├── src/
-│   ├── __init__.py
-│   ├── cli.py              # Flow logic (controller)
-│   ├── config.py           # Constants (Demon HP, cost, DB path)
-│   ├── core.py             # All the math (brain)
-│   ├── db.py               # Database logic (muscles)
-│   ├── inputs.py           # User prompt handling (questionary)
-│   ├── views.py            # Display logic (rich)
-│   └── demonic_calc.db     # (Auto-generated database)
-├── main.py                 # Application entry point
-└── README.md
-'''
+demon-calc/ ├── .venv/ # Folder środowiska wirtualnego ├── src/ # Główny folder z kodem źródłowym │ ├── init.py │ ├── cli.py # Logika przepływu (kontroler) │ ├── config.py # Stałe (HP Demona, koszt, ścieżka DB) │ ├── core.py # Cała matematyka (mózg) │ ├── db.py # Logika bazy danych (mięśnie) │ ├── inputs.py # Obsługa zapytań (questionary) │ ├── views.py # Wyświetlanie (rich) │ └── demonic_calc.db # (Generowana automatycznie baza danych) ├── main.py # Punkt startowy aplikacji └── README.md'''
