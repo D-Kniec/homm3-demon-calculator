@@ -163,17 +163,17 @@ If you want to run the app directly from the Python source code instead of using
 
 ## 📂 Project Structure
 
-Oto jak zorganizowany jest kod:
+Here's how the code is organized:
 
-* **`demon-calc/`** (Główny folder projektu)
-    * **`.venv/`**: Folder środowiska wirtualnego (ignorowany)
-    * **`src/`**: Folder z kodem źródłowym
-        * `cli.py`: Główna logika aplikacji i menu (kontroler)
-        * `config.py`: Stałe (HP Demona, koszt, ścieżka do bazy)
-        * `core.py`: Cała matematyka (mózg obliczeń)
-        * `db.py`: Logika bazy danych (zarządzanie danymi)
-        * `inputs.py`: Obsługa zapytań od użytkownika
-        * `views.py`: Wyświetlanie tabel i paneli (interfejs)
-        * `demonic_calc.db`: (Generowana automatycznie) Baza danych SQLite
-    * **`main.py`**: Punkt startowy aplikacji
-    * **`README.md`**: Ten plik, który czytasz
+* **`demon-calc/`** (Main project root)
+    * **`.venv/`**: Virtual environment folder (ignored)
+    * **`src/`**: Main source code folder
+        * `cli.py`: Main application logic and menus (controller)
+        * `config.py`: Constants (Demon HP, cost, DB path)
+        * `core.py`: All the math (the "brain")
+        * `db.py`: Database logic (data management)
+        * `inputs.py`: User prompt handling
+        * `views.py`: Table and panel display (the "face")
+        * `demonic_calc.db`: (Auto-generated) SQLite database
+    * **`main.py`**: The application's entry point
+    * **`README.md`**: This file
