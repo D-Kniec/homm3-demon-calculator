@@ -9,7 +9,7 @@ DB_CONNECTION_STRING = f"sqlite:///{DB_FILE_PATH}"
 
 DEMON_HP = 35
 PIT_LORD_GRIND_RATE = 50
-
+DEMON_GOLD_COST = 250
 
 FACTION_COLORS = {
     "Zamek": "bold white",

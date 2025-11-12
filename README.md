@@ -1,89 +1,188 @@
 # 🔥 HotA Demon Farming Calculator 🔥
 
-This is a Python CLI tool to calculate and optimize your demon farming in **Heroes of Might & Magic 3: Horn of the Abyss (HotA)**.
+Because if you're not min-maxing your demon farming in a 25-year-old game, are you even playing it right?
+Yeah, I'm the life of the party. What about it?
 
-It answers the eternal question: "How many demons will I *actually* get if I sacrifice X units with Y Pit Lords?" and helps you stop wasting precious HP.
+Welcome to the advanced calculator for **Heroes of Might & Magic 3: Horn of the Abyss (HotA)**. This CLI (Command-Line Interface) tool answers all your burning questions about Pit Lords and helps you maximize your gains.
 
-This version uses the `rich` and `questionary` libraries for a modern, interactive, and colorful UI.
+## 🌟 What's Inside? (What it does)
 
-## 🌟 What's Inside?
+* **Game Mode:** Create and load saved "games." The app remembers your *First Aid* level, equipped *HP Artifacts*, and your default Pit Lord count.
+* **Full HotA Database:** All units from all factions (including Cove and Factory) complete with their **Gold Cost**. Yes, I manually entered all of them. You're welcome.
+* **Standard Calculator:** Simple calculations for "how many units give how many demons?".
+* **Reverse Calculator:** Enter how many demons you want, and the app tells you how many units and Pit Lords you need. Because "I *think* this is enough" is a terrible strategy.
+* **Cost Analysis:** The app automatically calculates the **cost per demon** and shows whether you are **profiting or losing gold** compared to buying demons in town (for 250 gold).
+* **Distribution Chart:** An interactive chart that shows the "sweet spots" (`PERFECT STACK`) for your units, so you don't waste a single HP.
+* **Game Management:** Easily create, load, and **delete** your saved game profiles.
 
-* **Sandbox Mode:** Just punch in a unit's HP and stack size. No fuss.
-* **Full HoMM3 Database:** Don't remember the HP of a *Dendroid Strażnik*? No problem. The app has a full, built-in database of *all* units from *all* factions (including **Cove, Factory, Conflux, and Neutrals**).
-* **Full Analysis:** Tells you *exactly* what you get, what you waste, and what your bottleneck is (not enough HP or not enough Pit Lords).
-* **"Perfect Stack" Solver:** Calculates the *smallest* stack of a unit needed for a 0% waste conversion.
-* **Interactive Chart:** This is the cool part. It shows you a live, richly-formatted chart of the units +/- 4 from your current stack, so you can see *exactly* where the "perfect" breakpoints are.
+## 📸 App Demo (How it looks)
 
-## 📸 Live Demo
-
-Here's a sample run choosing a unit from the database.
+Here is a sample workflow in **Game Mode**, showing the economic analysis. Why yes, that *is* a `Loss vs Buying`. Sacrificing actual Demons to make... Demons... is a good business plan.
 
 ```text
 ╭──────────────────────────────────────────────╮
 │        DEMON FARMING CALCULATOR (HotA)       │
 ╰──────────────────────────────────────────────╯
-? Select option: Simple Calculator
+? Select option: Game Mode (Load/Create)
 
+╭──────────────────────────────────────────────╮
+│                  Game Mode                   │
+│                                              │
+│ Select a game to load or create a new one.   │
+╰──────────────────────────────────────────────╯
+? Select a game or create a new one: [ CREATE NEW GAME ]
+? Enter new game name (e.g., 'my_game_02'): WePlayForFun
+
+Loaded game: 'WePlayForFun'
+──────────────── Game Mode: WePlayForFun | Pit Lords: 0 | First Aid Lvl: 0 ────────────────
+? Select action: Farm Demons (Calculator)
 ? Select unit HP source: Select from database
-? Select Faction: Bastion
+? Select Faction: Inferno
 
-╭───────────────────────────────────────────────────────────────────╮
-│                        Select Unit (Bastion)                        │
-├───────┬───────────────────┬────────┬───────┬──────────────────┬─────┤
-│ Key   │ Non-Upgraded      │ HP     │ Key   │ Upgraded         │ HP  │
-│ [1]   │ Centaur           │ 8      │ [11]  │ Kapitan Centaurów│ 10  │
-│ ---   │ ---               │ ---    │ ---   │ ---              │ --- │
-│ [2]   │ Leśny Elf         │ 15     │ [22]  │ Wielki Elf       │ 15  │
-│ ---   │ ---               │ ---    │ ---   │ ---              │ --- │
-│ [3]   │ Krasnolud         │ 20     │ [33]  │ Krasnoludzki Woj.│ 20  │
-│ ---   │ ---               │ ---    │ ---   │ ---              │ --- │
-│ [4]   │ Pegaz             │ 30     │ [44]  │ Srebrny Pegaz    │ 30  │
-│ ---   │ ---               │ ---    │ ---   │ ---              │ --- │
-│ [5]   │ Dendroid          │ 55     │ [55]  │ Dendroid Strażnik│ 65  │
-│ ---   ...                 ...      ...     ...                ...   │
-╰───────────────────────────────────────────────────────────────────╯
-? Enter number (or '0' to cancel/back): 55
-? Enter number of units (HP: 65): 10
-? Enter number of Pit Lords (needed: 13): 5
+╭───────────────────────────────────────────────────────────────────────────────────╮
+│                             Select Unit (Inferno)                                 │
+├─────┬──────────────────┬──────┬───────┬─────┬───────────────────┬──────┬───────── ┤
+│ Key │ Non-Upgraded     │ HP   │ Cost  │ Key │ Upgraded          │ HP   │ Cost     │
+│ [1] │ Imp              │ 4.0  │ 50    │ [11]│ Chochlik          │ 4.0  │ 60       │
+│ --- │ ---              │ ---  │ ---   │ --- │ ---               │ ---  │ ---      │
+│ [2] │ Gog              │ 13.0 │ 125   │ [22]│ Magog             │ 13.0 │ 175      │
+│ --- │ ---              │ ---  │ ---   │ --- │ ---               │ ---  │ ---      │
+│ [3] │ Piekielny Ogar   │ 25.0 │ 200   │ [33]│ Cerber            │ 25.0 │ 250      │
+│ --- │ ---              │ ---  │ ---   │ --- │ ---               │ ---  │ ---      │
+│ [4] │ Demon            │ 35.0 │ 250   │ [44]│ Rogaty Demon      │ 40.0 │ 270      │
+│ ... │ ...              │ ...  │ ...   │ ... │ ...               │ ...  │ ...      │
+╰───────────────────────────────────────────────────────────────────────────────────╯
+? Enter number (or '0' to cancel/back): 4
+? Number of units (Demon | Base HP: 35.0 -> Mod: 35.00): 100
+? Enter number of Pit Lords (needed: 50): 50
 
-╭────────────────────────────────────────────────────────────────╮
-│                       Calculation Results                        │
-│                                                                │
-│    INPUT DATA                                                  │
-│      ├─ Units:           10 x (HP: 65.0)                        │
-│      ├─ Total HP Pool:   650                                    │
-│      └─ Pit Lords Used:  5                                      │
-│                                                                │
-│    YIELD                                                       │
-│      ├─ Max (from HP):   18.57                                  │
-│      ├─ Max (from Lords): 7.14                                  │
-│      └─ >>  ACTUALLY GAINED: 7.14 demons                        │
-│                                                                │
-│    OPTIMIZATION                                                │
-│      ├─ Wasted HP:       20.00 (remainder)                      │
-│      ├─ Needed Lords:    13 (for this stack)                    │
-│      └─ Perfect Stack:   7 units (for 455 HP)                   │
-│                                                                │
-╰────────────────────────────────────────────────────────────────╯
-╭──────────────────────────────────────────────────────────────────────────╮
-│                         Local Distribution Chart                         │
-│ [✓]    7 lords |   6 Units: [█         ]   11.14 Demons | Waste: 10.00 HP │
-│ [✓]    8 lords |   7 Units: [█▍        ]   13.00 Demons | Waste:  0.00 HP |   <-- (PERFECT STACK)
-│ [✓]   10 lords |   8 Units: [█▋        ]   14.86 Demons | Waste: 25.00 HP │
-│ [✓]   11 lords |   9 Units: [█▊        ]   16.71 Demons | Waste: 15.00 HP │
-│ [✓]   13 lords |  10 Units: [██        ]   18.57 Demons | Waste: 20.00 HP |   <-- (CURRENT) (Need +4 for PERFECTION)
-│ [ ]   14 lords |  11 Units: [██▎       ]   20.43 Demons | Waste:  5.00 HP │
-│ [ ]   16 lords |  12 Units: [██▌       ]   22.29 Demons | Waste: 30.00 HP │
-│ [ ]   17 lords |  13 Units: [██▊       ]   24.14 Demons | Waste: 25.00 HP │
-│ [ ]   19 lords |  14 Units: [███       ]   26.00 Demons | Waste:  0.00 HP |   <-- (PERFECT STACK)
-╰──────────────────────────────────────────────────────────────────────────╯
-╭────────────────────────────────────────────────────────────────────────╮
-│                                  Legend                                │
-│                                                                        │
-│      [✓]/[ ] = Your 5 Pit Lords are enough for this stack                │
-│      █       = *Potential* Demons from HP (scaled to list max)           │
-│      Lords   = *Theoretical* Pit Lords needed for this stack             │
-│                                                                        │
-╰────────────────────────────────────────────────────────────────────────╯
+╭──────────────────────────────────────────────────────────────────────────────────╮
+│                             Calculation Results                                  │
+│                                                                                  │
+│    INPUT DATA                                                                    │
+│      ├─ Units:           100 x (Unit: Demon)                                     │
+│      ├─ Base HP:         35.0                                                    │
+│      ├─ Artifact Bonus:  +0                                                      │
+│      ├─ First Aid Lvl:   0 (0%)                                                  │
+│      └─ Modified HP:     35.00                                                   │
+│      ├─ Total HP Pool:   3,500 (from Modified HP)                                │
+│      └─ Pit Lords Used:  50                                                      │
+│                                                                                  │
+│    YIELD                                                                         │
+│      ├─ Max (from HP):   100.00                                                  │
+│      ├─ Max (from Lords): 71.43                                                  │
+│      └─ >>  ACTUALLY GAINED: 71.43 demons                                        │
+│                                                                                  │
+│    OPTIMIZATION (Based on Modified HP)                                           │
+│      ├─ Wasted HP:       0.00 (remainder)                                        │
+│      ├─ Needed Lords:    50 (for this stack)                                     │
+│      └─ Perfect Stack:   1 units (for 35 HP)                                     │
+│                                                                                  │
+│    ECONOMICS                                                                     │
+│      ├─ Unit Cost:       250 gold                                                │
+│      ├─ Total Stack Cost:25,000 gold                                             │
+│      ├─ Cost per Demon:  350 gold                                                │
+│      └─ Loss vs Buying:    -100 gold / demon                                     │
+│                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────╯
 
-... press Enter to calculate for another unit in this faction ...
+🚀 Get It Running (How to Install)
+
+This is a standalone application! You do not need to install Python or any libraries.
+
+For Linux Users (You are here):
+
+    Go to the Releases tab on this GitHub page.
+
+    Download the latest .zip file (e.g., demon-calc-linux.zip).
+
+    Unzip the file. You will get a single executable file named demon-calc.
+
+    Open your terminal and go to the folder where you unzipped the file.
+
+    Important: You must make the file executable first:
+    Bash
+
+chmod +x demon-calc
+
+Run the application:
+Bash
+
+    ./demon-calc
+
+For Windows Users:
+
+    Go to the Releases tab on this GitHub page.
+
+    Download the latest .zip file (e.g., demon-calc-windows.zip).
+
+    Unzip the file.
+
+    Double-click the demon-calc.exe file to run the application. (Windows may show a security warning because the file is not "signed". You may need to click "More info" -> "Run anyway").
+
+<details> <summary><b>(Advanced) For Developers: How to Run from Source</b></summary>
+
+If you want to run the app directly from the Python source code instead of using the executable.
+
+    Prerequisites: You need Python 3.10+ installed.
+
+    Get the Code:
+    Bash
+
+git clone [https://github.com/D-Kniec/homm3-demon-calculator.git](https://github.com/D-Kniec/homm3-demon-calculator.git)
+cd YOUR-REPO-NAME
+
+Create Virtual Environment:
+Bash
+
+# On macOS/Linux
+python3 -m venv .venv
+source .venv/bin/activate
+
+# On Windows
+python -m venv .venv
+.\.venv\Scripts\activate
+
+Install Dependencies:
+Bash
+
+pip install sqlalchemy rich questionary tqdm
+
+Run the App:
+Bash
+
+    python main.py
+
+    (The first run will auto-generate the src/demonic_calc.db file)
+
+</details>
+
+🛠️ Tech Stack (aka The Nerd Stuff)
+
+    Python 3.10+
+
+    Rich: For beautiful CLI panels, tables, and colors.
+
+    Questionary: For interactive menus and prompts.
+
+    SQLAlchemy: For communicating with the database.
+
+    tqdm: For the one-time database initialization progress bar.
+
+    SQLite: Because a full-blown PostgreSQL database would be slight overkill.
+
+📂 Project Structure
+
+demon-calc/
+├── .venv/
+├── src/
+│   ├── __init__.py
+│   ├── cli.py              # Flow logic (controller)
+│   ├── config.py           # Constants (Demon HP, cost, DB path)
+│   ├── core.py             # All the math (brain)
+│   ├── db.py               # Database logic (muscles)
+│   ├── inputs.py           # User prompt handling (questionary)
+│   ├── views.py            # Display logic (rich)
+│   └── demonic_calc.db     # (Auto-generated database)
+├── main.py                 # Application entry point
+└── README.md

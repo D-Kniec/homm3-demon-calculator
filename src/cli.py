@@ -1,256 +1,32 @@
 import sys
 import src.db as db
 import src.core
-from src.config import DEMON_HP, PIT_LORD_GRIND_RATE,FACTION_COLORS
+import questionary
+from typing import Tuple
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.table import Table
-from rich.text import Text
-import questionary
+
+import src.inputs as inputs
+import src.views as views
+
 
 console = Console()
 
-
-
-def get_int_input(prompt: str) -> int:
-    """Safely gets an integer from the user using questionary."""
-    while True:
-        answer = questionary.text(prompt).ask()
-        try:
-            return int(answer)
-        except (ValueError, TypeError):
-            console.print("[bold red]Error: Please enter a valid integer.[/bold red]")
-
-def get_float_input(prompt: str) -> float:
-    """Safely gets a float from the user using questionary."""
-    while True:
-        answer = questionary.text(prompt).ask()
-        try:
-            return float(answer)
-        except (ValueError, TypeError):
-            console.print("[bold red]Error: Please enter a valid number.[/bold red]")
-
-def get_choice_from_map(options_map: dict):
-    """Gets a user's choice from a dictionary map using questionary."""
-    while True:
-        choice_str = questionary.text("Enter number (or '0' to cancel/back):").ask()
-        
-        if choice_str is None:
-            return None
-        if choice_str == '0':
-            return None 
-        
-        if choice_str in options_map:
-            return options_map[choice_str]
-        else:
-            valid_keys = ", ".join(options_map.keys())
-            console.print(f"[bold red]Error: Please select a valid number. Choices are: {valid_keys}[/bold red]")
-
-def display_main_menu():
-    """Displays the main menu using rich.Panel."""
-    menu_text = (
-        "\n"
-        "[bold cyan][1][/bold cyan] Simple Calculator ('Sandbox' Mode)\n"
-        "[bold cyan][2][/bold cyan] Game Mode (Load/Create) (TODO)\n"
-        "\n"
-        "[bold yellow][0][/bold yellow] Exit"
-    )
+def _get_modified_hp(base_hp: float, game_id: int, fa_level: int) -> Tuple[float, int]:
+    """
+    Gets the artifact bonus and calculates the modified HP.
+    Returns (modified_hp, artifact_bonus)
+    """
+    artifact_bonus = db.get_game_hp_bonus(game_id)
     
-    console.print(
-        Panel(
-            menu_text, 
-            title="DEMON FARMING CALCULATOR (HotA)", 
-            border_style="#d62455",
-            title_align="center",
-            padding=(1, 2)
-        )
-    )
-
-def display_results(results: dict):
-    """Displays a formatted calculation report using rich."""
-    console.print(Panel(
-        f"  [bold]INPUT DATA[/bold]\n"
-        f"    ├─ Units:           {results['unit_count']} x (HP: {results['unit_hp']})\n"
-        f"    ├─ Total HP Pool:   {results['total_hp_pool']:.0f}\n"
-        f"    └─ Pit Lords Used:  {results['pit_lord_count']}\n"
-        f"\n"
-        f"  [bold]YIELD[/bold]\n"
-        f"    ├─ Max (from HP):   [yellow]{results['max_demons_from_hp']:.2f}[/yellow]\n"
-        f"    ├─ Max (from Lords): [yellow]{results['max_demons_from_lords']:.2f}[/yellow]\n"
-        f"    └─ >> [bold green] ACTUALLY GAINED: {results['actual_demons_gained']:.2f} demons[/bold green]\n"
-        f"\n"
-        f"  [bold]OPTIMIZATION[/bold]\n"
-        f"    ├─ Wasted HP:       [red]{results['wasted_hp']:.2f}[/red] (remainder)\n"
-        f"    ├─ Needed Lords:    {results['needed_pit_lords']} (for this stack)\n"
-        f"    └─ Perfect Stack:   {results['perfect_grind_units']} units (for {results['perfect_grind_hp']:.0f} HP)",
-        title="Calculation Results",
-        border_style="magenta",
-        padding=1
-    ))
-
-
-def display_unit_selection_table(faction: str, non_upgraded: list, upgraded: list) -> dict:
-    """Displays units in a rich.Table and returns the choice map."""
+    hp_with_artifacts = base_hp + artifact_bonus
     
-    faction_color = FACTION_COLORS.get(faction, "default")
+    fa_multiplier = 1.0 + (fa_level * 0.10)
     
-    table = Table(title=f"Select Unit ({faction})", border_style="blue", padding=(0, 1))
-    table.add_column("Key", style="cyan", width=5)
-    table.add_column("Non-Upgraded")
-    table.add_column("HP", style="yellow", width=6)
-    table.add_column("Key", style="cyan", width=5)
-    table.add_column("Upgraded")
-    table.add_column("HP", style="yellow", width=6)
+    modified_hp = hp_with_artifacts * fa_multiplier
     
-    choice_map = {}
-    
-    len_n = len(non_upgraded)
-    len_u = len(upgraded)
-    max_len = max(len_n, len_u)
-
-    for i in range(max_len):
-        key_n, unit_n_str, hp_n = "", "", ""
-        if i < len_n:
-            key_n = str(i + 1)
-            unit_n_str = non_upgraded[i][0]
-            hp_n = str(non_upgraded[i][1])
-            choice_map[key_n] = non_upgraded[i]
-
-        key_u, unit_u_str, hp_u = "", "", ""
-        if i < len_u:
-            key_u = str(i + 1) * 2
-            unit_u_str = upgraded[i][0]
-            hp_u = str(upgraded[i][1])
-            choice_map[key_u] = upgraded[i]
-        
-        if i > 0:
-            table.add_row("---", "---", "---", "---", "---", "---", style="dim")
-
-        unit_n_styled = Text(unit_n_str, style=faction_color) if unit_n_str else ""
-        unit_u_styled = Text(unit_u_str, style=faction_color) if unit_u_str else ""
-
-        table.add_row(f"[{key_n}]", unit_n_styled, hp_n, f"[{key_u}]", unit_u_styled, hp_u)
-        
-    console.print(table)
-    return choice_map
-
-
-def display_distribution_chart(chart_data: list, user_pit_lord_input: int, next_perfect_count: int, current_count: int):
-    """Draws the terminal bar chart using rich.Table."""
-    
-    lords_color_hex = "#FC591E"
-
-    demons_values = [d['demons'] for d in chart_data if d.get('demons') is not None]
-    if not demons_values:
-        console.print("  (No data to display)")
-        return
-        
-    max_demons = max(demons_values)
-    if max_demons == 0:
-        max_demons = 1 
-
-    BAR_WIDTH = 25 
-    current_lord_group = None 
-
-    def get_bar(demons):
-        """Creates a single bar."""
-        if demons is None:
-            return " " * BAR_WIDTH
-        bar_len = int((demons / max_demons) * BAR_WIDTH)
-        return Text('█' * bar_len, style="blue") + Text(' ' * (BAR_WIDTH - bar_len))
-
-    table = Table.grid(padding=(0, 1))
-    table.add_column(width=4)
-    table.add_column(width=9)
-    table.add_column(width=10)
-    table.add_column(width=BAR_WIDTH + 2)
-    table.add_column(width=15)
-    table.add_column(width=15)
-    table.add_column()
-
-    for item in chart_data:
-        if item.get('is_special'):
-            table.add_row(Text("(...)".center(23 + BAR_WIDTH), style="dim"))
-            current_lord_group = None 
-            
-        count = item['count']
-        demons = item['demons']
-        waste = item.get('waste')
-        lords = item['lords']
-        is_current = item['is_current']
-        
-        is_perfect = (waste is not None and waste == 0.0 and count > 0)
-        
-        if count == 0 and not is_current:
-            continue
-            
-        check_mark = Text(" ")
-        if lords is None:
-            check_mark = Text("?", style="yellow")
-        elif user_pit_lord_input >= lords:
-            check_mark = Text("✓", style="green")
-
-        lords_str = Text(" ")
-        if lords != current_lord_group:
-            if current_lord_group is not None:
-                table.add_row(
-                    Text("---", style="dim"), 
-                    Text("---------", style="dim"), 
-                    Text("---------", style="dim"), 
-                    Text("-" * (BAR_WIDTH + 2), style="dim"), 
-                    Text("---------------", style="dim"), 
-                    Text("-------------------", style="dim"), 
-                    style="dim"
-                )
-
-            if lords is None:
-                lords_str = Text("?? lords", style="yellow")
-            elif user_pit_lord_input >= lords:
-                 lords_str = Text(f"{lords: >2} lord{'s' if lords != 1 else ' '}", style=f"bold {lords_color_hex}")
-            else:
-                 lords_str = Text(f"{lords: >2} lord{'s' if lords != 1 else ' '}", style=f"{lords_color_hex}")
-            
-            current_lord_group = lords
-        
-        label = Text("")
-        if is_current and is_perfect:
-            label = Text("  <-- (CURRENT & PERFECT)", style="bold green")
-        elif is_current:
-            label = Text("  <-- (CURRENT)", style="bold yellow")
-            if next_perfect_count > current_count:
-                diff = next_perfect_count - current_count
-                label.append(f" (Need +{diff} for PERFECTION)", style="yellow")
-        elif is_perfect:
-            label = Text("  <-- (PERFECT STACK)", style="bold green")
-            
-        if count < 0 or demons is None:
-            bar_str = Text(" (invalid) ".center(BAR_WIDTH), style="red")
-            demons_str = Text("---".center(6), style="dim")
-            waste_str = Text("---".center(6), style="dim")
-        else:
-            bar_str = get_bar(demons)
-            demons_str = Text(f"{demons: >6.2f} Demons")
-            waste_str = Text(f"{waste: >6.2f} HP", style="red" if waste > 0 else "dim")
-            
-        table.add_row(
-            f"[{check_mark}]", 
-            lords_str, 
-            f"{count: >3} Units:",
-            f"[{bar_str}]",
-            demons_str,
-            f"| Waste: {waste_str}",
-            label
-        )
-    
-    console.print(Panel(table, title="Local Distribution Chart", border_style="cyan"))
-
-    legend = (
-        f"    [green][✓][/green]/[dim][ ][/dim] = Your {user_pit_lord_input} Pit Lords are enough for this stack\n"
-        f"    [blue]█[/blue]       = *Potential* Demons from HP (scaled to list max)\n"
-        f"    [bold {lords_color_hex}]Lords[/bold {lords_color_hex}]   = *Theoretical* Pit Lords needed for this stack"
-    )
-    console.print(Panel(legend, title="Legend", border_style="grey50", padding=(0, 2)))
+    return modified_hp, artifact_bonus
 
 
 def _calculate_chart_data(unit_hp, unit_count, pit_lord_count):
@@ -337,22 +113,30 @@ def run_simple_calculator():
         ]
     ).ask()
 
-    unit_hp = 0.0
-
     if choice == '1':
+        last_faction = None
         while True:
-            factions = db.get_factions()
-            factions.append(questionary.Separator())
-            factions.append(questionary.Choice("Back", "0"))
-            
+            all_factions = db.get_factions()
+            faction_choices = []
+            if last_faction and last_faction in all_factions:
+                faction_choices.append(questionary.Choice(title=f"Last Used: {last_faction}", value=last_faction))
+                faction_choices.append(questionary.Separator("--- All Factions ---"))
+                all_factions.remove(last_faction)
+                
+            for f in all_factions:
+                faction_choices.append(f)
+            faction_choices.append(questionary.Separator())
+            faction_choices.append(questionary.Choice("Back", "0"))
+
             faction = questionary.select(
                 "Select Faction:",
-                choices=factions
+                choices=faction_choices
             ).ask()
             
             if faction is None or faction == '0': 
                 return 
 
+            last_faction = faction
             non_upgraded = db.get_units_by_faction(faction, False)
             upgraded = db.get_units_by_faction(faction, True)
             
@@ -362,63 +146,468 @@ def run_simple_calculator():
                 continue 
 
             while True:
-                choice_map = display_unit_selection_table(faction, non_upgraded, upgraded)
-                
-                unit_data = get_choice_from_map(choice_map) 
+                choice_map = views.display_unit_selection_table(faction, non_upgraded, upgraded)
+                unit_data = inputs.get_choice_from_map(choice_map) 
                 
                 if unit_data is None: 
                     break 
 
-                unit_hp = unit_data[1] 
+                unit_name, unit_hp, unit_gold_cost = unit_data
                 
-                unit_count = get_int_input(f"Enter number of units (HP: {unit_hp}): ")
+                unit_count = inputs.get_int_input(f"Enter number of units (HP: {unit_hp}): ")
 
                 prelim_results = src.core.calculate_demon_farm(unit_hp, unit_count, 0)
                 needed_lords = prelim_results['needed_pit_lords']
                 
-                pit_lord_count = get_int_input(f"Enter number of Pit Lords (needed: {needed_lords}): ")
+                pit_lord_count = inputs.get_int_input(f"Enter number of Pit Lords (needed: {needed_lords}): ", default=str(needed_lords))
 
                 results_current, chart_data_list, next_p_count = _calculate_chart_data(unit_hp, unit_count, pit_lord_count)
+                
+                results_current["gold_cost"] = unit_gold_cost
+                results_current["game_mode_data"] = { "unit_name": unit_name }
 
-                display_results(results_current)
-                display_distribution_chart(chart_data_list, pit_lord_count, next_p_count, unit_count)
+                views.display_results(results_current)
+                views.display_distribution_chart(chart_data_list, pit_lord_count, next_p_count, unit_count)
                 
                 console.print("\n... press Enter to calculate for another unit in this faction ...", style="dim")
                 input()
 
     elif choice == '2':
-        unit_hp = get_float_input("Enter single unit HP: ")
-        
-        unit_count = get_int_input(f"Enter number of units (HP: {unit_hp}): ")
+        unit_hp = inputs.get_float_input("Enter single unit HP: ")
+        unit_count = inputs.get_int_input(f"Enter number of units (HP: {unit_hp}): ")
         
         prelim_results = src.core.calculate_demon_farm(unit_hp, unit_count, 0)
         needed_lords = prelim_results['needed_pit_lords']
         
-        pit_lord_count = get_int_input(f"Enter number of Pit Lords (needed: {needed_lords}): ")
+        pit_lord_count = inputs.get_int_input(f"Enter number of Pit Lords (needed: {needed_lords}): ", default=str(needed_lords))
 
         results_current, chart_data_list, next_p_count = _calculate_chart_data(unit_hp, unit_count, pit_lord_count)
+        
+        results_current["gold_cost"] = 0
 
-        display_results(results_current)
-        display_distribution_chart(chart_data_list, pit_lord_count, next_p_count, unit_count)
+        views.display_results(results_current)
+        views.display_distribution_chart(chart_data_list, pit_lord_count, next_p_count, unit_count)
         
         console.print("\n... press Enter to return to the main menu ...", style="dim")
         input()
     
     elif choice == '0' or choice is None:
         return
+
+def run_reverse_calculator():
+    """Runs the logic for the Reverse Calculator."""
+    console.print(Panel("[bold]Reverse Calculator[/bold]\n\nCalculate how many units you need to get a target number of demons.", border_style="cyan"))
     
+    target_demons = inputs.get_int_input("Enter target number of demons: ")
+    if target_demons <= 0:
+        console.print("[red]Please enter a positive number.[/red]")
+        return
+        
+    console.print("[dim]Next, select the unit you want to sacrifice...[/dim]")
+    
+    last_faction = None
+    while True:
+        all_factions = db.get_factions()
+        faction_choices = []
+        if last_faction and last_faction in all_factions:
+            faction_choices.append(questionary.Choice(title=f"Last Used: {last_faction}", value=last_faction))
+            faction_choices.append(questionary.Separator("--- All Factions ---"))
+            all_factions.remove(last_faction)
+            
+        for f in all_factions:
+            faction_choices.append(f)
+        faction_choices.append(questionary.Separator())
+        faction_choices.append(questionary.Choice("Back", "0"))
+
+        faction = questionary.select(
+            "Select Faction:",
+            choices=faction_choices
+        ).ask()
+        
+        if faction is None or faction == '0': 
+            return 
+
+        last_faction = faction
+        non_upgraded = db.get_units_by_faction(faction, False)
+        upgraded = db.get_units_by_faction(faction, True)
+        
+        if not non_upgraded and not upgraded:
+            console.print(f"[bold red]No units found for '{faction}'.[/bold red]")
+            input("... press Enter to select another faction ...")
+            continue 
+
+        while True:
+            choice_map = views.display_unit_selection_table(faction, non_upgraded, upgraded)
+            unit_data = inputs.get_choice_from_map(choice_map) 
+            
+            if unit_data is None: 
+                break 
+
+            unit_name, unit_hp, unit_gold_cost = unit_data
+            
+            if unit_hp <= 0:
+                console.print(f"[red]Error: {unit_name} has 0 HP and cannot be sacrificed.[/red]")
+                continue
+
+            results = src.core.calculate_reverse_farm(target_demons, unit_hp, unit_gold_cost)
+            
+            views.display_reverse_results(results, unit_name)
+            
+            console.print("\n... press Enter to calculate for another unit ...", style="dim")
+            input()
+
+
+def _manage_artifacts(game_id: int):
+    """Handles the multi-choice selection for game artifacts."""
+    
+    all_artifacts = db.get_all_artifacts()
+    current_artifact_ids = db.get_game_artifacts(game_id)
+    
+    choices = []
+    for art in all_artifacts:
+        choices.append(questionary.Choice(
+            f"{art['name']} (+{art['hp_bonus']} HP)",
+            value=art['artifact_id'],
+            checked=(art['artifact_id'] in current_artifact_ids)
+        ))
+    
+    console.print(Panel("[dim]Select the artifacts your hero possesses (space = toggle, enter = confirm)[/dim]",
+                      border_style="yellow"))
+    
+    selected_ids = questionary.checkbox(
+        "Select artifacts:",
+        choices=choices
+    ).ask()
+    
+    if selected_ids is None:
+        console.print("[yellow]Artifact selection cancelled.[/yellow]")
+        return
+
+    db.set_game_artifacts(game_id, selected_ids)
+    new_bonus = db.get_game_hp_bonus(game_id)
+    console.print(f"\n[green]Artifacts saved! Current total HP bonus: [bold]+{new_bonus} HP[/bold][/green]")
+    input("\n... press Enter to continue ...")
+
+
+def _delete_game_prompt():
+    """Shows a prompt to select and delete a game."""
+    console.print(Panel("[bold red]Delete Game[/bold red]", border_style="red"))
+    
+    existing_games = db.get_all_games()
+    
+    if not existing_games:
+        console.print("[yellow]No games found to delete.[/yellow]")
+        input("\n... press Enter to continue ...")
+        return
+
+    game_choices = [
+        questionary.Choice(title=f"{game['name']} (created: {game['created_at'].strftime('%Y-%m-%d')})", value=game['game_id'])
+        for game in existing_games
+    ]
+    game_choices.append(questionary.Separator())
+    game_choices.append(questionary.Choice(title="[ CANCEL ]", value=0))
+
+    game_id_to_delete = questionary.select(
+        "Which game do you want to delete? (This cannot be undone!)",
+        choices=game_choices
+    ).ask()
+
+    if game_id_to_delete is None or game_id_to_delete == 0:
+        console.print("[green]Deletion cancelled.[/green]")
+        return
+
+    confirm = questionary.confirm(
+        f"Are you absolutely sure you want to delete this game? All logs will be lost.",
+        default=False
+    ).ask()
+
+    if confirm:
+        db.delete_game(game_id_to_delete)
+        console.print("[green]Game successfully deleted.[/green]")
+    else:
+        console.print("[green]Deletion cancelled.[/green]")
+        
+    input("\n... press Enter to continue ...")
+
+
+def run_game_mode():
+    """Runs the logic for the game mode."""
+    
+    console.print(Panel("[bold]Game Mode[/bold]\n\nSelect a game to load or create a new one.", border_style="cyan"))
+    
+    existing_games = db.get_all_games()
+    
+    game_choices = [
+        questionary.Choice(title=f"{game['name']} (created: {game['created_at'].strftime('%Y-%m-%d')})", value=game['name'])
+        for game in existing_games
+    ]
+    
+    choices = [
+        questionary.Separator("--- Load Existing Game ---"),
+        *game_choices,
+        questionary.Separator("--- Other Options ---"),
+        questionary.Choice(title="[ CREATE NEW GAME ]", value="--new--"),
+        questionary.Choice(title="[ DELETE A GAME ]", value="--delete--"),
+        questionary.Choice(title="[ Back to Main Menu ]", value="--back--")
+    ]
+    
+    if not existing_games:
+        choices = [
+            questionary.Choice(title="[ CREATE NEW GAME ]", value="--new--"),
+            questionary.Choice(title="[ DELETE A GAME ]", value="--delete--"),
+            questionary.Choice(title="[ Back to Main Menu ]", value="--back--")
+        ]
+
+    selected_choice = questionary.select(
+        "Select a game or create a new one:",
+        choices=choices,
+        use_shortcuts=True
+    ).ask()
+    
+    game_name = ""
+    
+    if selected_choice is None or selected_choice == "--back--":
+        return
+    elif selected_choice == "--delete--":
+        _delete_game_prompt()
+        return
+    elif selected_choice == "--new--":
+        game_name = inputs.get_string_input("Enter new game name (e.g., 'my_game_02'):")
+        if not game_name:
+            console.print("[yellow]Game creation cancelled.[/yellow]")
+            return
+    else:
+        game_name = selected_choice
+
+    game_data = db.get_or_create_game(game_name)
+    game_id = game_data['game_id']
+    
+    console.print(f"[green]Loaded game: '{game_name}'[/green]")
+    
+    while True:
+        console.rule(f"[bold cyan]Game Mode: {game_name}[/bold cyan] | Pit Lords: {game_data['pit_lord_count']} | First Aid Lvl: {game_data['first_aid_level']}")
+        
+        choice = questionary.select(
+            "Select action:",
+            choices=[
+                questionary.Choice("Farm Demons (Calculator)", '1'),
+                questionary.Choice("Set Pit Lord Count", '2'),
+                questionary.Choice("Set First Aid Level", '3'),
+                questionary.Choice("Manage HP Artifacts", '4'),
+                questionary.Choice("View Game Summary", '5S'),
+                questionary.Separator(),
+                questionary.Choice("Back to Main Menu", '0')
+            ]
+        ).ask()
+        
+        if choice == '0' or choice is None:
+            return
+        
+        elif choice == '1':
+            run_game_calculator_loop(game_data)
+        
+        elif choice == '2':
+            console.print(f"Current Pit Lord count: {game_data['pit_lord_count']}")
+            new_lords = inputs.get_int_input("Enter new Pit Lord count:", default=str(game_data['pit_lord_count']))
+            
+            db.update_game_stats(game_id, new_lords, game_data['first_aid_level'])
+            game_data['pit_lord_count'] = new_lords
+            
+            console.print("[green]Game settings saved.[/green]")
+            input("\n... press Enter to continue ...")
+
+        elif choice == '3':
+            console.print(f"Current First Aid level: {game_data['first_aid_level']} (0=None, 1=Basic, 2=Adv, 3=Exp)")
+            new_fa = inputs.get_int_input("Enter new First Aid level (0-3):", default=str(game_data['first_aid_level']))
+            
+            if new_fa not in [0, 1, 2, 3]:
+                console.print("[red]Error: First Aid level must be between 0 and 3.[/red]")
+            else:
+                db.update_game_stats(game_id, game_data['pit_lord_count'], new_fa)
+                game_data['first_aid_level'] = new_fa
+                console.print("[green]Game settings saved.[/green]")
+            
+            input("\n... press Enter to continue ...")
+
+        elif choice == '4':
+            _manage_artifacts(game_id)
+
+        elif choice == '5S':
+            summary_data = db.get_game_log_summary(game_id)
+            views.display_game_summary(game_name, summary_data)
+            input("\n... press Enter to continue ...")
+
+
+def run_game_calculator_loop(game_data: dict):
+    """The calculator loop used within Game Mode."""
+    
+    game_id = game_data['game_id']
+    default_pit_lord_count = game_data['pit_lord_count']
+    fa_level = game_data['first_aid_level']
+    
+    if default_pit_lord_count == 0:
+        console.print("[bold yellow]Warning: Default Pit Lord count for this game is 0.[/bold yellow]")
+        console.print("You can change this in the 'Set Pit Lord Count' menu.")
+
+    choice = questionary.select(
+        "Select unit HP source:",
+        choices=[
+            questionary.Choice("Select from database", 'db'),
+            questionary.Choice("Enter HP manually", 'manual'),
+            questionary.Separator(),
+            questionary.Choice("Back to Game Menu", '0')
+        ],
+        default='db'
+    ).ask()
+
+    if choice == 'db':
+        last_faction = None
+        while True:
+            all_factions = db.get_factions()
+            faction_choices = []
+            if last_faction and last_faction in all_factions:
+                faction_choices.append(questionary.Choice(title=f"Last Used: {last_faction}", value=last_faction))
+                faction_choices.append(questionary.Separator("--- All Factions ---"))
+                all_factions.remove(last_faction)
+                
+            for f in all_factions:
+                faction_choices.append(f)
+            faction_choices.append(questionary.Separator())
+            faction_choices.append(questionary.Choice("Back", "0"))
+            
+            faction = questionary.select(
+                "Select Faction:",
+                choices=faction_choices
+            ).ask()
+            
+            if faction is None or faction == '0': 
+                return
+
+            last_faction = faction
+            non_upgraded = db.get_units_by_faction(faction, False)
+            upgraded = db.get_units_by_faction(faction, True)
+            
+            if not non_upgraded and not upgraded:
+                console.print(f"[bold red]No units found for faction '{faction}'.[/bold red]")
+                input("... press Enter to select another faction ...")
+                continue 
+
+            while True:
+                choice_map = views.display_unit_selection_table(faction, non_upgraded, upgraded)
+                unit_data = inputs.get_choice_from_map(choice_map) 
+                
+                if unit_data is None: 
+                    break
+
+                unit_name, base_hp, unit_gold_cost = unit_data
+                
+                modified_hp, artifact_bonus = _get_modified_hp(base_hp, game_id, fa_level)
+                
+                unit_count = inputs.get_int_input(f"Number of units ({unit_name} | Base HP: {base_hp} -> Mod: {modified_hp:.2f}): ")
+
+                prelim_results_db = src.core.calculate_demon_farm(modified_hp, unit_count, 0)
+                needed_lords_db = prelim_results_db['needed_pit_lords']
+
+                current_pit_lords = inputs.get_int_input(
+                    f"Enter number of Pit Lords (needed: {needed_lords_db}): ", 
+                    default=str(default_pit_lord_count)
+                )
+                
+                default_pit_lord_count = current_pit_lords 
+
+                results_current, chart_data_list, next_p_count = _calculate_chart_data(modified_hp, unit_count, current_pit_lords)
+
+                game_mode_info = {
+                    "unit_name": unit_name,
+                    "base_hp": base_hp,
+                    "art_bonus": artifact_bonus,
+                    "fa_level": fa_level
+                }
+                results_current["pit_lord_count"] = current_pit_lords
+                results_current["gold_cost"] = unit_gold_cost
+                results_current["game_mode_data"] = game_mode_info
+
+                views.display_results(results_current)
+                views.display_distribution_chart(chart_data_list, current_pit_lords, next_p_count, unit_count)
+                
+                db.log_calculation(
+                    game_id=game_id,
+                    unit_name=unit_name,
+                    base_hp=base_hp,
+                    mod_hp=modified_hp,
+                    count=unit_count,
+                    pit_lords=current_pit_lords,
+                    demons=results_current['actual_demons_gained'],
+                    waste=results_current['wasted_hp']
+                )
+                console.print("[bold green]✓ Result saved to game log.[/bold green]")
+                
+                console.print("\n... press Enter to calculate for another unit ...", style="dim")
+                input()
+    
+    elif choice == 'manual':
+        base_hp = inputs.get_float_input("Enter single unit Base HP: ")
+        unit_name = f"Custom Unit ({base_hp} HP)"
+        
+        modified_hp, artifact_bonus = _get_modified_hp(base_hp, game_id, fa_level)
+        
+        unit_count = inputs.get_int_input(f"Number of units ({unit_name} | Base HP: {base_hp} -> Mod: {modified_hp:.2f}): ")
+
+        prelim_results_manual = src.core.calculate_demon_farm(modified_hp, unit_count, 0)
+        needed_lords_manual = prelim_results_manual['needed_pit_lords']
+
+        current_pit_lords = inputs.get_int_input(
+            f"Enter number of Pit Lords (needed: {needed_lords_manual}): ", 
+            default=str(default_pit_lord_count)
+        )
+        
+        default_pit_lord_count = current_pit_lords
+
+        results_current, chart_data_list, next_p_count = _calculate_chart_data(modified_hp, unit_count, current_pit_lords)
+
+        game_mode_info = {
+            "unit_name": unit_name,
+            "base_hp": base_hp,
+            "art_bonus": artifact_bonus,
+            "fa_level": fa_level
+        }
+        results_current["pit_lord_count"] = current_pit_lords
+        results_current["gold_cost"] = 0
+        results_current["game_mode_data"] = game_mode_info
+
+        views.display_results(results_current)
+        views.display_distribution_chart(chart_data_list, current_pit_lords, next_p_count, unit_count)
+        
+        db.log_calculation(
+            game_id=game_id,
+            unit_name=unit_name,
+            base_hp=base_hp,
+            mod_hp=modified_hp,
+            count=unit_count,
+            pit_lords=current_pit_lords,
+            demons=results_current['actual_demons_gained'],
+            waste=results_current['wasted_hp']
+        )
+        console.print("[bold green]✓ Result saved to game log.[/bold green]")
+        console.print("\n... press Enter to return to game menu ...", style="dim")
+        input()
+
+    elif choice == '0' or choice is None:
+        return
+
 
 def start_app():
     """Main application loop."""
     
     while True:
-        display_main_menu()
+        views.display_main_menu()
         
         choice = questionary.select(
             "Select option:",
             choices=[
                 questionary.Choice("Simple Calculator", '1'),
-                questionary.Choice("Game Mode (TODO)", '2'),
+                questionary.Choice("Game Mode (Load/Create)", '2'),
+                questionary.Choice("Reverse Calculator (Demons -> Units)", '3'),
                 questionary.Separator(),
                 questionary.Choice("Exit", '0')
             ],
@@ -428,9 +617,9 @@ def start_app():
         if choice == '1':
             run_simple_calculator()
         elif choice == '2':
-            console.print("\n[yellow]Game Mode is not yet implemented. (TODO)[/yellow]")
-            console.print("\n... press Enter to return to menu ...", style="dim")
-            input()
+            run_game_mode()
+        elif choice == '3':
+            run_reverse_calculator()
         elif choice == '0' or choice is None:
             console.print("[bold cyan]Goodbye![/bold cyan]")
             sys.exit(0)

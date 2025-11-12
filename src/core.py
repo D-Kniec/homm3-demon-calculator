@@ -1,4 +1,3 @@
-
 import math
 from src.config import DEMON_HP, PIT_LORD_GRIND_RATE
 
@@ -43,4 +42,36 @@ def calculate_demon_farm(unit_hp: float, unit_count: int, pit_lord_count: int) -
         "perfect_grind_units": units_for_perfect_grind,
         "perfect_grind_hp": hp_for_perfect_grind,
         "perfect_grind_lords": lords_for_perfect_grind,
+    }
+
+def calculate_reverse_farm(target_demons: int, unit_hp: float, unit_gold_cost: int) -> dict:
+    """
+    Calculates the number of units needed to produce a target number of demons.
+    """
+    if unit_hp <= 0:
+        return { "error": "Unit HP must be positive." }
+
+    needed_total_hp = target_demons * DEMON_HP
+    
+    needed_units = math.ceil(needed_total_hp / unit_hp)
+    
+    actual_hp_pool = needed_units * unit_hp
+    actual_demons_yield = actual_hp_pool / DEMON_HP
+    needed_pit_lords = math.ceil(actual_hp_pool / PIT_LORD_GRIND_RATE)
+    wasted_hp = actual_hp_pool % DEMON_HP
+    
+    total_gold_cost = needed_units * unit_gold_cost if unit_gold_cost > 0 else 0
+    gold_per_demon = total_gold_cost / actual_demons_yield if actual_demons_yield > 0 and total_gold_cost > 0 else 0
+    
+    return {
+        "target_demons": target_demons,
+        "unit_hp": unit_hp,
+        "unit_gold_cost": unit_gold_cost,
+        "needed_units": needed_units,
+        "needed_pit_lords": needed_pit_lords,
+        "actual_hp_pool": actual_hp_pool,
+        "actual_demons_yield": actual_demons_yield,
+        "wasted_hp": wasted_hp,
+        "total_gold_cost": total_gold_cost,
+        "gold_per_demon": gold_per_demon
     }
