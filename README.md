@@ -159,8 +159,8 @@ If you want to run the app directly from the Python source code instead of using
 * **SQLAlchemy:** For communicating with the database.
 * **tqdm:** For the one-time database initialization progress bar.
 * **SQLite:** Because a full-blown PostgreSQL database would be *slight* overkill.
-
-📂 Project Structure
+'''
+##📂 Project Structure
 
 demon-calc/
 ├── .venv/
@@ -175,3 +175,4 @@ demon-calc/
 │   └── demonic_calc.db     # (Auto-generated database)
 ├── main.py                 # Application entry point
 └── README.md
+'''
