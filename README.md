@@ -164,7 +164,6 @@ If you want to run the app directly from the Python source code instead of using
 ## 📂 Project Structure
 
 Here's how the code is organized:
-
 * **`demon-calc/`** (Main project root)
     * **`.venv/`**: Virtual environment folder (ignored)
     * **`src/`**: Main source code folder
